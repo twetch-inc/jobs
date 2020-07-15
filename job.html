@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+   <head>
+    <title>Twetch Jobs</title>
+    <script src="/scripts/twetch.min.js"></script>
+   </head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <body onload="postsQuery()">
+    <h4><a href="https://retrotwetch.com/jobs">Twetch Jobs</a></h4>
+      <div id="message-container" class="nes-container is-dark"></div>
+      <script>
+        function populateHTML(count){
+            for (let i = 0; i<count; i++){
+                document.getElementById('message-container').innerHTML +=
+                `<div class="twetch">
+                <p class="title profile"><img class="avatar">
+                <a class="userLink" href="" target="_blank"></a></p>
+                <p class="urlFormat"></p>
+                    <div class="item">
+                        <i class=""></i><var class="numLikes"></var>
+                        <button type="button" class="share">Share</button>
+                        <a target="_blank" class="txid">#tx</a>
+                    </div>
+                </div>`
+            }
+        }
+        var options = {clientIdentifier: '3aa07813-f027-4a80-8834-4913c1a23c9d'},sdk = new twetchjs(options),twetches = document.getElementById("message-container");
+        async function postsQuery() {
+            document.getElementById('message-container').innerHTML = "";
+            let orderBy = 'orderBy: CREATED_AT_DESC', response = '';
+            response = await sdk.query(`{
+                allPosts(filter: {bContent: {includes: "/job "}}, orderBy: CREATED_AT_DESC) {
+                    nodes {bContent numLikes userId transaction userByUserId {icon name}} totalCount}
+            }`);
+            posts = response.allPosts.nodes;console.log(response.allPosts.totalCount);
+            populateHTML(response.allPosts.totalCount);
+            let profiles = document.getElementsByClassName("avatar"),userLinks = document.getElementsByClassName("userLink"),postTitles = document.getElementsByClassName("title profile");
+            let contents = document.getElementsByClassName("urlFormat"),likes = document.getElementsByClassName("numLikes");
+            let shares = document.getElementsByClassName("share"),txids = document.getElementsByClassName("txid");
+            for (let i=0; i<posts.length;i++)
+			{let content = posts[i].bContent;
+                profiles[i].src = posts[i].userByUserId.icon;
+                userLinks[i].innerHTML = ` ${posts[i].userByUserId.name} u/${posts[i].userId}`;
+                userLinks[i].href = `https://twetch.app/u/${posts[i].userId}`;
+                contents[i].innerHTML = applyURLs(content);
+                likes[i].innerHTML = posts[i].numLikes;
+                likes[i].id = `${posts[i].transaction}_count`;
+                shares[i].name = posts[i].transaction;
+                txids[i].href = `https://search.matterpool.io/tx/${posts[i].transaction}`;
+            }
+        }
+        function bitcoinfilesEx(content, bfRegex){
+            return content.replace(bfRegex, function(url){let txid = url.substr(url.length - 64);
+                return `<div><a href="https://media.bitcoinfiles.org/${txid}"><img src="https://media.bitcoinfiles.org/${txid}" class="bitcoinfiles"></a></div>`;
+            })
+        }
+        function applyURLs(content) {
+            if (content.indexOf("https://www.bitcoinfiles.org/t") >= 0) {
+                return bitcoinfilesEx(content, /http(s)?:\/\/(.*\.)?bitcoinfiles\.org\/t\/([A-z0-9_\/?=]+)/);
+            }
+            else if (content.indexOf("https://media.bitcoinfiles.org/") >= 0){
+                return bitcoinfilesEx(content, /http(s)?:\/\/(.*\.)?media\.bitcoinfiles\.org\/([A-z0-9]+)/);
+            }
+            else {
+                var urlRegex = /(https?:\/\/[^\s]+)/g;
+                return content.replace(urlRegex, function(url) {
+                    return '<a href="' + url + '"target="_blank">' + url + '</a>';
+                })
+            }
+        }
+        if ('serviceWorker' in navigator) {navigator.serviceWorker.register('/serviceworker.js')
+            .then(function(registration) {console.log('Registration successful, scope is:', registration.scope)})
+            .catch(function(error) {console.log('Service worker registration failed, error:', error)});
+        }
+      </script>
+    </body>
+</html>
